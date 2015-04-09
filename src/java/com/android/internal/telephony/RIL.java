@@ -94,6 +94,91 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Random;
 
 /**
+* {@hide}
+*/
+class SonyRIL {
+    private static final int SONY_RIL_REQUEST_IMS_REGISTRATION_STATE = 109;
+    private static final int SONY_RIL_REQUEST_IMS_SEND_SMS = 110;
+    private static final int SONY_RIL_REQUEST_GET_DATA_CALL_PROFILE = 111;
+    private static final int SONY_RIL_REQUEST_SETUP_QOS = 112;
+    private static final int SONY_RIL_REQUEST_RELEASE_QOS = 113;
+    private static final int SONY_RIL_REQUEST_GET_QOS_STATUS = 114;
+    private static final int SONY_RIL_REQUEST_MODIFY_QOS = 115;
+    private static final int SONY_RIL_REQUEST_SUSPEND_QOS = 116;
+    private static final int SONY_RIL_REQUEST_RESUME_QOS = 117;
+    private static final int SONY_RIL_REQUEST_SET_UICC_SUBSCRIPTION = 118;
+    private static final int SONY_RIL_REQUEST_SET_DATA_SUBSCRIPTION = 119;
+    private static final int SONY_RIL_REQUEST_GET_UICC_SUBSCRIPTION = 120;
+    private static final int SONY_RIL_REQUEST_GET_DATA_SUBSCRIPTION = 121;
+    private static final int SONY_RIL_REQUEST_SET_SUBSCRIPTION_MODE = 122;
+    private static final int SONY_RIL_REQUEST_SET_TRANSMIT_POWER = 123;
+    private static final int SONY_RIL_REQUEST_SIM_TRANSMIT_BASIC = 124;
+    private static final int SONY_RIL_REQUEST_SIM_OPEN_CHANNEL = 125;
+    private static final int SONY_RIL_REQUEST_SIM_CLOSE_CHANNEL = 126;
+    private static final int SONY_RIL_REQUEST_SIM_TRANSMIT_CHANNEL = 127;
+    
+    private static final int SONY_RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED = 1036;
+    private static final int SONY_RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED = 1041;
+    private static final int SONY_RIL_UNSOL_ON_SS = 1039;
+    private static final int SONY_RIL_UNSOL_STK_CC_ALPHA_NOTIFY = 1040;
+    
+    static boolean isRequestSupported(int request) {
+        switch (request) {
+            case RIL_REQUEST_GET_CELL_INFO_LIST:
+            case RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE:
+            case RIL_REQUEST_SET_INITIAL_ATTACH_APN:
+            case RIL_REQUEST_NV_READ_ITEM:
+            case RIL_REQUEST_NV_WRITE_ITEM:
+            case RIL_REQUEST_NV_WRITE_CDMA_PRL:
+            case RIL_REQUEST_NV_RESET_CONFIG:
+            case RIL_REQUEST_ALLOW_DATA:
+            case RIL_REQUEST_GET_HARDWARE_CONFIG:
+            case RIL_REQUEST_SIM_AUTHENTICATION:
+            case RIL_REQUEST_GET_DC_RT_INFO:
+            case RIL_REQUEST_SET_DC_RT_INFO_RATE:
+            case RIL_REQUEST_SET_DATA_PROFILE:
+            case RIL_REQUEST_SHUTDOWN:
+            return false;
+        }
+        return true;
+    }
+    
+    static int translateRequest(int request) {
+        switch (request) {
+            case RIL_REQUEST_IMS_REGISTRATION_STATE:
+                return SONY_RIL_REQUEST_IMS_REGISTRATION_STATE;
+            case RIL_REQUEST_IMS_SEND_SMS:
+                return SONY_RIL_REQUEST_IMS_SEND_SMS;
+            case RIL_REQUEST_SIM_TRANSMIT_APDU_BASIC:
+                return SONY_RIL_REQUEST_SIM_TRANSMIT_BASIC;
+            case RIL_REQUEST_SIM_OPEN_CHANNEL:
+                return SONY_RIL_REQUEST_SIM_OPEN_CHANNEL;
+            case RIL_REQUEST_SIM_CLOSE_CHANNEL:
+                return SONY_RIL_REQUEST_SIM_CLOSE_CHANNEL;
+            case RIL_REQUEST_SIM_TRANSMIT_APDU_CHANNEL:
+                return SONY_RIL_REQUEST_SIM_TRANSMIT_CHANNEL;
+            case RIL_REQUEST_SET_UICC_SUBSCRIPTION:
+                return SONY_RIL_REQUEST_SET_UICC_SUBSCRIPTION;
+        }
+        return request;
+    }
+    
+    static int translateResponse(int response) {
+        switch (response) {
+            case SONY_RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED:
+                return RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED;
+            case SONY_RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED:
+                return RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED;
+            case SONY_RIL_UNSOL_ON_SS:
+                return RIL_UNSOL_ON_SS;
+            case SONY_RIL_UNSOL_STK_CC_ALPHA_NOTIFY:
+                return RIL_UNSOL_STK_CC_ALPHA_NOTIFY;
+        }
+        return response;
+    }
+}
+
+/**
  * {@hide}
  */
 class RILRequest {
@@ -149,7 +234,7 @@ class RILRequest {
         }
 
         // first elements in any RIL Parcel
-        rr.mParcel.writeInt(request);
+        rr.mParcel.writeInt(SonyRIL.translateRequest(request));
         rr.mParcel.writeInt(rr.mSerial);
 
         return rr;
@@ -287,7 +372,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     // Number of per-network elements expected in QUERY_AVAILABLE_NETWORKS's response.
     // 4 elements is default, but many RILs actually return 5, making it impossible to
     // divide the response array without prior knowledge of the number of elements.
-    protected int mQANElements = 4;
+    protected int mQANElements = 5;
 
     //***** Events
 
@@ -568,18 +653,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 Rlog.i(RILJ_LOG_TAG, "(" + mInstanceId + ") Connected to '"
                         + rilSocket + "' socket");
 
-                /* Compatibility with qcom's DSDS (Dual SIM) stack */
-                if (needsOldRilFeature("qcomdsds")) {
-                    String str = "SUB1";
-                    byte[] data = str.getBytes();
-                    try {
-                        mSocket.getOutputStream().write(data);
-                        Rlog.i(RILJ_LOG_TAG, "Data sent!!");
-                    } catch (IOException ex) {
-                            Rlog.e(RILJ_LOG_TAG, "IOException", ex);
-                    } catch (RuntimeException exc) {
-                        Rlog.e(RILJ_LOG_TAG, "Uncaught exception ", exc);
-                    }
+                String str = "SUB1";
+                byte[] data = str.getBytes();
+                try {
+                    mSocket.getOutputStream().write(data);
+                    Rlog.i(RILJ_LOG_TAG, "Data sent!!");
+                } catch (IOException ex) {
+                        Rlog.e(RILJ_LOG_TAG, "IOException", ex);
+                } catch (RuntimeException exc) {
+                    Rlog.e(RILJ_LOG_TAG, "Uncaught exception ", exc);
                 }
 
                 int length = 0;
@@ -2582,6 +2664,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
             return;
         }
 
+        if (!SonyRIL.isRequestSupported(rr.mRequest)) {
+            rr.onError(REQUEST_NOT_SUPPORTED, null);
+            rr.release();
+            return;
+        }
+
         msg = mSender.obtainMessage(EVENT_SEND, rr);
 
         acquireWakeLock();
@@ -2965,7 +3053,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         int response;
         Object ret;
 
-        response = p.readInt();
+        response = SonyRIL.translateResponse(p.readInt());
 
         try {switch(response) {
 /*
