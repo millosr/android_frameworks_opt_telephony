@@ -190,6 +190,10 @@ public final class DcTracker extends DcTrackerBase {
 
     private CdmaApnProfileTracker mOmhApt;
 
+    /* MMS Data Profile Device Override */
+    private static final int MMS_DATA_PROFILE = SystemProperties.getInt(
+            "ro.telephony.mms_data_profile", RILConstants.DATA_PROFILE_DEFAULT);
+
     //***** Constructor
     public DcTracker(PhoneBase p) {
         super(p);
@@ -848,6 +852,14 @@ public final class DcTracker extends DcTrackerBase {
         int dataSub = SubscriptionManager.getDefaultDataSubId();
         boolean defaultDataSelected = SubscriptionManager.isValidSubscriptionId(dataSub);
 
+        boolean psRestricted = mIsPsRestricted;
+        boolean isSetNotification = mPhone.getContext().getResources().getBoolean(
+                com.android.internal.R.bool.config_user_notification_of_restrictied_mobile_access);
+        if (!isSetNotification) {
+            attachedState = true;
+            psRestricted = false;
+        }
+
         PhoneConstants.State state = PhoneConstants.State.IDLE;
         if (mPhone.getCallTracker() != null) {
             state = mPhone.getCallTracker().getState();
@@ -860,7 +872,7 @@ public final class DcTracker extends DcTrackerBase {
                     internalDataEnabled &&
                     defaultDataSelected &&
                     (!mPhone.getServiceState().getDataRoaming() || getDataOnRoamingEnabled()) &&
-                    !mIsPsRestricted &&
+                    !psRestricted &&
                     desiredPowerState;
         if (!allowed && DBG) {
             String reason = "";
@@ -880,7 +892,7 @@ public final class DcTracker extends DcTrackerBase {
             if (mPhone.getServiceState().getDataRoaming() && !getDataOnRoamingEnabled()) {
                 reason += " - Roaming and data roaming not enabled";
             }
-            if (mIsPsRestricted) reason += " - mIsPsRestricted= true";
+            if (psRestricted) reason += " - mIsPsRestricted= true";
             if (!desiredPowerState) reason += " - desiredPowerState= false";
             if (DBG) log("isDataAllowed: not allowed due to" + reason);
         }
@@ -904,7 +916,6 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     private boolean trySetupData(ApnContext apnContext) {
-        boolean retValue = false;
         if (DBG) {
             log("trySetupData for type:" + apnContext.getApnType() +
                     " due to " + apnContext.getReason() + " apnContext=" + apnContext);
@@ -947,13 +958,10 @@ public final class DcTracker extends DcTrackerBase {
                 ArrayList<ApnSetting> waitingApns = buildWaitingApns(apnContext.getApnType(),
                         radioTech);
                 if (waitingApns.isEmpty()) {
+                    notifyNoData(DcFailCause.MISSING_UNKNOWN_APN, apnContext);
                     notifyOffApnsOfAvailability(apnContext.getReason());
-                    retValue = setupData(apnContext, radioTech);
-                    if(!retValue) {
-                        notifyNoData(DcFailCause.MISSING_UNKNOWN_APN, apnContext);
-                    }
-                    notifyOffApnsOfAvailability(apnContext.getReason());
-                    return retValue;
+                    if (DBG) log("trySetupData: X No APN found retValue=false");
+                    return false;
                 } else {
                     apnContext.setWaitingApns(waitingApns);
                     if (DBG) {
@@ -972,9 +980,7 @@ public final class DcTracker extends DcTrackerBase {
                             + apnListToString(apnContext.getWaitingApns()));
                 }
             }
-
-            retValue = setupData(apnContext, radioTech);
-
+            boolean retValue = setupData(apnContext, radioTech);
             notifyOffApnsOfAvailability(apnContext.getReason());
 
             if (DBG) log("trySetupData: X retValue=" + retValue);
@@ -1380,38 +1386,8 @@ public final class DcTracker extends DcTrackerBase {
 
         apnSetting = apnContext.getNextWaitingApn();
         if (apnSetting == null) {
-            if(PhoneConstants.PHONE_TYPE_CDMA==mPhone.getPhoneType()) {
-                String[] mDunApnTypes = { PhoneConstants.APN_TYPE_DUN };
-                final int mDefaultApnId = DctConstants.APN_DEFAULT_ID;
-                final String[] mDefaultApnTypes = {
-                    PhoneConstants.APN_TYPE_DEFAULT,
-                    PhoneConstants.APN_TYPE_MMS,
-                    PhoneConstants.APN_TYPE_SUPL,
-                    PhoneConstants.APN_TYPE_HIPRI,
-                    PhoneConstants.APN_TYPE_FOTA,
-                    PhoneConstants.APN_TYPE_IMS,
-                    PhoneConstants.APN_TYPE_CBS};
-
-
-                String[] types;
-                int apnId;
-                if (mRequestedApnType.equals(PhoneConstants.APN_TYPE_DUN)) {
-                    types = mDunApnTypes;
-                    apnId = DctConstants.APN_DUN_ID;
-                } else {
-                    types = mDefaultApnTypes;
-                    apnId = mDefaultApnId;
-                }
-                apnSetting = new ApnSetting(apnId, getOperatorNumeric(), null, null,
-                                null, null, null, null, null, null, null,
-                    RILConstants.SETUP_DATA_AUTH_PAP_CHAP, types,
-                    PROPERTY_CDMA_IPPROTOCOL, PROPERTY_CDMA_ROAMING_IPPROTOCOL, true, 0,
-                    0, false, 0, 0, 0, PhoneConstants.UNSET_MTU, "", "");
-                if (DBG) log("setupData: CDMA detected and apnSetting == null, use stubbed CDMA APN setting= " + apnSetting);
-            } else {
-                if (DBG) log("setupData: return for no apn found!");
-                return false;
-            }
+            if (DBG) log("setupData: return for no apn found!");
+            return false;
         }
 
         int profileId = apnSetting.profileId;
@@ -3063,6 +3039,8 @@ public final class DcTracker extends DcTrackerBase {
             return RILConstants.DATA_PROFILE_DEFAULT; // DEFAULT for now
         } else if (TextUtils.equals(apnType, PhoneConstants.APN_TYPE_DUN)) {
             return RILConstants.DATA_PROFILE_TETHERED;
+        } else if (TextUtils.equals(apnType, PhoneConstants.APN_TYPE_MMS)) {
+            return MMS_DATA_PROFILE;
         } else {
             return RILConstants.DATA_PROFILE_DEFAULT;
         }
