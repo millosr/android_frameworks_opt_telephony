@@ -648,7 +648,12 @@ public abstract class PhoneBase extends Handler implements Phone {
             case EVENT_GET_RADIO_CAPABILITY:
                 ar = (AsyncResult) msg.obj;
                 RadioCapability rc = (RadioCapability) ar.result;
-                if (ar.exception != null) {
+
+                if (rc == null && ar.exception != null) {
+                    Rlog.d(LOG_TAG, "get phone radio capability seems not supported!");
+                    rc = makeStaticRadioCapability(0);
+                    radioCapabilityUpdated(rc);
+                } else if (ar.exception != null) {
                     Rlog.d(LOG_TAG, "get phone radio capability fail,"
                             + "no need to change mRadioCapability");
                 } else {
@@ -2481,6 +2486,21 @@ public abstract class PhoneBase extends Handler implements Phone {
     public int getRadioAccessFamily() {
         final RadioCapability rc = getRadioCapability();
         return (rc == null ? RadioAccessFamily.RAF_UNKNOWN : rc.getRadioAccessFamily());
+    }
+
+    private RadioCapability makeStaticRadioCapability(int instanceId) {
+        // default to UNKNOWN so we fail fast.
+        int raf = RadioAccessFamily.RAF_UNKNOWN;
+
+        String rafString = mContext.getResources().getString(
+                com.android.internal.R.string.config_radio_access_family);
+        if (TextUtils.isEmpty(rafString) == false) {
+            raf = RadioAccessFamily.rafTypeFromString(rafString);
+        }
+        RadioCapability rc = new RadioCapability(instanceId, 0, 0, raf,
+                "", RadioCapability.RC_STATUS_SUCCESS);
+        Rlog.d(LOG_TAG, "Simulate unsupported RIL_REQUEST_GET_RADIO_CAPABILITY using " + raf);
+        return rc;
     }
 
     @Override
