@@ -110,6 +110,41 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * {@hide}
  */
+class SonyRIL {
+    static boolean isRequestSupported(int request) {
+        switch (request) {
+            case RIL_REQUEST_GET_CELL_INFO_LIST:
+            case RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE:
+            case RIL_REQUEST_SET_INITIAL_ATTACH_APN:
+            case RIL_REQUEST_IMS_REGISTRATION_STATE:
+            case RIL_REQUEST_IMS_SEND_SMS:
+            case RIL_REQUEST_SIM_TRANSMIT_APDU_BASIC:
+            case RIL_REQUEST_SIM_OPEN_CHANNEL:
+            case RIL_REQUEST_SIM_CLOSE_CHANNEL:
+            case RIL_REQUEST_SIM_TRANSMIT_APDU_CHANNEL:
+            case RIL_REQUEST_NV_READ_ITEM:
+            case RIL_REQUEST_NV_WRITE_ITEM:
+            case RIL_REQUEST_NV_WRITE_CDMA_PRL:
+            case RIL_REQUEST_NV_RESET_CONFIG:
+            case RIL_REQUEST_SET_UICC_SUBSCRIPTION:
+            case RIL_REQUEST_ALLOW_DATA:
+            case RIL_REQUEST_GET_HARDWARE_CONFIG:
+            case RIL_REQUEST_SIM_AUTHENTICATION:
+            case RIL_REQUEST_GET_DC_RT_INFO:
+            case RIL_REQUEST_SET_DC_RT_INFO_RATE:
+            case RIL_REQUEST_SET_DATA_PROFILE:
+            case RIL_REQUEST_SHUTDOWN:
+            case RIL_REQUEST_GET_RADIO_CAPABILITY:
+            case RIL_REQUEST_SET_RADIO_CAPABILITY:
+            case RIL_REQUEST_START_LCE:
+            case RIL_REQUEST_STOP_LCE:
+            case RIL_REQUEST_PULL_LCEDATA:
+            case RIL_REQUEST_GET_ACTIVITY_INFO:
+                return false;
+        }
+        return true;
+    }
+}
 
 class RILRequest {
     static final String LOG_TAG = "RilRequest";
@@ -3470,38 +3505,59 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void requestShutdown(Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_SHUTDOWN, result,
-                    mRILDefaultWorkSource);
+        if (!SonyRIL.isRequestSupported(RIL_REQUEST_SHUTDOWN)) {
+            if (RILJ_LOGD)
+                riljLog("Fake radio shutdown !");
 
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+            setRadioPower(false, null);
+            setRadioState(RadioState.RADIO_UNAVAILABLE);
+
+            if (result != null) {
+                /* fake successful */
+                AsyncResult.forMessage(result, null, null);
+                result.sendToTarget();
             }
-
-            try {
-                radioProxy.requestShutdown(rr.mSerial);
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "requestShutdown", e);
+        } else {
+            IRadio radioProxy = getRadioProxy(result);
+            if (radioProxy != null) {
+                RILRequest rr = obtainRequest(RIL_REQUEST_SHUTDOWN, result,
+                        mRILDefaultWorkSource);
+                if (RILJ_LOGD) {
+                    riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+                }
+                try {
+                    radioProxy.requestShutdown(rr.mSerial);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "requestShutdown", e);
+                }
             }
         }
     }
 
     @Override
     public void getRadioCapability(Message response) {
-        IRadio radioProxy = getRadioProxy(response);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_GET_RADIO_CAPABILITY, response,
-                    mRILDefaultWorkSource);
-
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        if (!SonyRIL.isRequestSupported(RIL_REQUEST_GET_RADIO_CAPABILITY)) {
+            riljLog("getRadioCapability: returning static radio capability");
+            if (response != null) {
+                Object ret = makeStaticRadioCapability();
+                AsyncResult.forMessage(response, ret, null);
+                response.sendToTarget();
             }
+        } else {
+            IRadio radioProxy = getRadioProxy(response);
+            if (radioProxy != null) {
+                RILRequest rr = obtainRequest(RIL_REQUEST_GET_RADIO_CAPABILITY, response,
+                        mRILDefaultWorkSource);
 
-            try {
-                radioProxy.getRadioCapability(rr.mSerial);
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "getRadioCapability", e);
+                if (RILJ_LOGD) {
+                    riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+                }
+
+                try {
+                    radioProxy.getRadioCapability(rr.mSerial);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "getRadioCapability", e);
+                }
             }
         }
     }
