@@ -135,6 +135,7 @@ class SonyRIL {
             case RIL_REQUEST_GET_DC_RT_INFO:
             case RIL_REQUEST_SET_DC_RT_INFO_RATE:
             case RIL_REQUEST_SET_DATA_PROFILE:
+            case RIL_REQUEST_SHUTDOWN:
             case RIL_REQUEST_GET_RADIO_CAPABILITY:
             case RIL_REQUEST_SET_RADIO_CAPABILITY:
             case RIL_REQUEST_START_LCE:
@@ -162,8 +163,6 @@ class SonyRIL {
                 return SONY_RIL_REQUEST_SIM_TRANSMIT_CHANNEL;
             case RIL_REQUEST_SET_UICC_SUBSCRIPTION:
                 return SONY_RIL_REQUEST_SET_UICC_SUBSCRIPTION;
-            case RIL_REQUEST_SHUTDOWN:
-                return RIL_REQUEST_RADIO_POWER;
         }
         return request;
     }
@@ -1662,15 +1661,29 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void requestShutdown(Message result) {
-        RILRequest rr = RILRequest.obtain(RIL_REQUEST_SHUTDOWN, result);
+        if (!SonyRIL.isRequestSupported(RIL_REQUEST_SHUTDOWN)) {
+            if (RILJ_LOGD)
+                riljLog("Fake radio shutdown !");
 
-        rr.mParcel.writeInt(1);
-        rr.mParcel.writeInt(0);
+            setRadioPower(false, null);
+            setRadioState(RadioState.RADIO_UNAVAILABLE);
 
-        if (RILJ_LOGD)
-            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+            if (result != null) {
+                /* fake successful */
+                AsyncResult.forMessage(result, null, null);
+                result.sendToTarget();
+            }
+        } else {
+            RILRequest rr = RILRequest.obtain(RIL_REQUEST_SHUTDOWN, result);
 
-        send(rr);
+            rr.mParcel.writeInt(1);
+            rr.mParcel.writeInt(0);
+
+            if (RILJ_LOGD)
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+            send(rr);
+	}
     }
 
     @Override
@@ -4900,12 +4913,23 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getRadioCapability(Message response) {
-        RILRequest rr = RILRequest.obtain(
-                RIL_REQUEST_GET_RADIO_CAPABILITY, response);
+	if (!SonyRIL.isRequestSupported(RIL_REQUEST_GET_RADIO_CAPABILITY)) {
+            riljLog("getRadioCapability: returning static radio capability");
+            if (response != null) {
+                Object ret = makeStaticRadioCapability();
+                AsyncResult.forMessage(response, ret, null);
+                response.sendToTarget();
+            }
 
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+	} else {
 
-        send(rr);
+            RILRequest rr = RILRequest.obtain(
+                    RIL_REQUEST_GET_RADIO_CAPABILITY, response);
+
+            if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+            send(rr);
+	}
     }
 
     @Override
