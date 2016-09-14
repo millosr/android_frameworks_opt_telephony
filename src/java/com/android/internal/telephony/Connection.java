@@ -39,6 +39,47 @@ public abstract class Connection {
     }
 
     /**
+     * Capabilities that will be mapped to telecom connection
+     * capabilities.
+     */
+    public static class Capability {
+
+        /**
+         * For an IMS video call, indicates that the local side of the call supports downgrading
+         * from a video call to an audio-only call.
+         */
+        public static final int SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL = 0x00000001;
+
+        /**
+         * For an IMS video call, indicates that the peer supports downgrading to an audio-only
+         * call.
+         */
+        public static final int SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE = 0x00000002;
+
+        /**
+         * For an IMS call, indicates that the call supports video locally.
+         */
+        public static final int SUPPORTS_VT_LOCAL_BIDIRECTIONAL = 0x00000004;
+
+        /**
+         * For an IMS call, indicates that the peer supports video.
+         */
+        public static final int SUPPORTS_VT_REMOTE_BIDIRECTIONAL = 0x00000008;
+
+        /**
+         * Indicates that the connection is an external connection (e.g. an instance of the class
+         * {@link com.android.internal.telephony.imsphone.ImsExternalConnection}.
+         */
+        public static final int IS_EXTERNAL_CONNECTION = 0x00000010;
+
+        /**
+         * Indicates that this external connection can be pulled from the remote device to the
+         * local device.
+         */
+        public static final int IS_PULLABLE = 0x00000020;
+    }
+
+    /**
      * Listener interface for events related to the connection which should be reported to the
      * {@link android.telecom.Connection}.
      */

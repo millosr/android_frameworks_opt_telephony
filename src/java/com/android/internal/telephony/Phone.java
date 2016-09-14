@@ -68,7 +68,7 @@ public interface Phone {
     }
 
     enum SuppService {
-      UNKNOWN, SWITCH, SEPARATE, TRANSFER, CONFERENCE, REJECT, HANGUP, RESUME;
+      UNKNOWN, SWITCH, SEPARATE, TRANSFER, CONFERENCE, REJECT, HANGUP, RESUME, HOLD;
     }
 
     // "Features" accessible through the connectivity manager
@@ -81,6 +81,13 @@ public interface Phone {
     static final String FEATURE_ENABLE_IMS = "enableIMS";
     static final String FEATURE_ENABLE_CBS = "enableCBS";
     static final String FEATURE_ENABLE_EMERGENCY = "enableEmergency";
+
+    // Key used to read and write the saved network selection numeric value
+    public static final String NETWORK_SELECTION_KEY = "network_selection_key";
+    // Key used to read and write the saved network selection operator name
+    public static final String NETWORK_SELECTION_NAME_KEY = "network_selection_name_key";
+    // Key used to read and write the saved network selection operator short name
+    public static final String NETWORK_SELECTION_SHORT_KEY = "network_selection_short_key";
 
     /**
      * Optional reasons for disconnect and connect
@@ -190,6 +197,13 @@ public interface Phone {
     public static final int CDMA_OTA_PROVISION_STATUS_OTAPA_STOPPED = 10;
     public static final int CDMA_OTA_PROVISION_STATUS_OTAPA_ABORTED = 11;
 
+    //IMS
+    public static final String EXTRA_KEY_ALERT_TITLE = "alertTitle";
+    public static final String EXTRA_KEY_ALERT_MESSAGE = "alertMessage";
+    public static final String EXTRA_KEY_ALERT_SHOW = "alertShow";
+
+    // Used for band mode selection methods
+    static final int BM_NUM_BAND_MODES = 19; //Total number of band modes
 
     /**
      * Get the current ServiceState. Use
