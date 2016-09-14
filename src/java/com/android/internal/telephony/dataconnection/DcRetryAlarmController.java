@@ -27,7 +27,6 @@ import android.telephony.Rlog;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.PhoneBase;
-import com.android.internal.telephony.RILConstants;
 
 /**
  * The Data Connection Retry Alarm Controller.
@@ -35,6 +34,8 @@ import com.android.internal.telephony.RILConstants;
 public class DcRetryAlarmController {
     private String mLogTag = "DcRac";
     private static final boolean DBG = true;
+
+    private static final int MAX_INT = 0x7FFFFFFF;
 
     private PhoneBase mPhone;
     private DataConnection mDc;
@@ -114,7 +115,7 @@ public class DcRetryAlarmController {
 
         DataCallResponse response = (DataCallResponse) ar.result;
         retryDelay = response.suggestedRetryTime;
-        if (retryDelay == RILConstants.MAX_INT) {
+        if (retryDelay == MAX_INT) {
             if (DBG) log("getSuggestedRetryTime: suggestedRetryTime is MAX_INT, retry NOT needed");
             retryDelay = -1;
         } else if (retryDelay >= 0) {

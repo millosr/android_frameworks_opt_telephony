@@ -729,7 +729,7 @@ public final class DcTracker extends DcTrackerBase {
             attachedState = true;
             psRestricted = false;
         }
-        int dataSub = SubscriptionManager.getDefaultDataSubId();
+        int dataSub = SubscriptionManager.getDefaultDataSubscriptionId();
         boolean defaultDataSelected = SubscriptionManager.isValidSubscriptionId(dataSub);
         PhoneConstants.State state = PhoneConstants.State.IDLE;
         // Note this is explicitly not using mPhone.getState.  See b/19090488.
@@ -1353,7 +1353,7 @@ public final class DcTracker extends DcTrackerBase {
         cleanUpConnectionsOnUpdatedApns(!isDisconnected);
 
         // FIXME: See bug 17426028 maybe no conditional is needed.
-        if (mPhone.getSubId() == SubscriptionManager.getDefaultDataSubId()) {
+        if (mPhone.getSubId() == SubscriptionManager.getDefaultDataSubscriptionId()) {
             setupDataOnConnectableApns(Phone.REASON_APN_CHANGED);
         }
     }
@@ -1463,7 +1463,7 @@ public final class DcTracker extends DcTrackerBase {
         intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
 
         // Get current sub id.
-        int subId = SubscriptionManager.getDefaultDataSubId();
+        int subId = SubscriptionManager.getDefaultDataSubscriptionId();
         intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, subId);
 
         if (DBG) {
@@ -1932,28 +1932,6 @@ public final class DcTracker extends DcTrackerBase {
                     // Turn off radio to save battery and avoid wasting carrier resources.
                     // The network isn't usable and network validation will just fail anyhow.
                     setRadio(false);
-
-                    Intent intent = new Intent(
-                            TelephonyIntents.ACTION_DATA_CONNECTION_CONNECTED_TO_PROVISIONING_APN);
-                    intent.putExtra(PhoneConstants.DATA_APN_KEY, apnContext.getApnSetting().apn);
-                    intent.putExtra(PhoneConstants.DATA_APN_TYPE_KEY, apnContext.getApnType());
-
-                    String apnType = apnContext.getApnType();
-                    LinkProperties linkProperties = getLinkProperties(apnType);
-                    if (linkProperties != null) {
-                        intent.putExtra(PhoneConstants.DATA_LINK_PROPERTIES_KEY, linkProperties);
-                        String iface = linkProperties.getInterfaceName();
-                        if (iface != null) {
-                            intent.putExtra(PhoneConstants.DATA_IFACE_NAME_KEY, iface);
-                        }
-                    }
-                    NetworkCapabilities networkCapabilities = getNetworkCapabilities(apnType);
-                    if (networkCapabilities != null) {
-                        intent.putExtra(PhoneConstants.DATA_NETWORK_CAPABILITIES_KEY,
-                                networkCapabilities);
-                    }
-
-                    mPhone.getContext().sendBroadcastAsUser(intent, UserHandle.ALL);
                 }
                 if (DBG) {
                     log("onDataSetupComplete: SETUP complete type=" + apnContext.getApnType()
@@ -1977,16 +1955,24 @@ public final class DcTracker extends DcTrackerBase {
             mPhone.notifyPreciseDataConnectionFailed(apnContext.getReason(),
                     apnContext.getApnType(), apn != null ? apn.apn : "unknown", cause.toString());
 
-            // Count permanent failures and remove the APN we just tried
-            if (isPermanentFail(cause)) apnContext.decWaitingApnsPermFailCount();
+            //compose broadcast intent send to the specific carrier apps
+            Intent intent = new Intent(TelephonyIntents.ACTION_REQUEST_NETWORK_FAILED);
+            intent.putExtra(ERROR_CODE_KEY, cause.getErrorCode());
+            intent.putExtra(APN_TYPE_KEY, apnContext.getApnType());
+            notifyCarrierAppWithIntent(intent);
 
-            apnContext.removeWaitingApn(apnContext.getApnSetting());
-            if (DBG) {
-                log(String.format("onDataSetupComplete: WaitingApns.size=%d" +
-                        " WaitingApnsPermFailureCountDown=%d",
-                        apnContext.getWaitingApns().size(),
-                        apnContext.getWaitingApnsPermFailCount()));
+            if (cause.isRestartRadioFail() || apnContext.restartOnError(cause.getErrorCode())) {
+                if (DBG) log("Modem restarted.");
+                sendRestartRadio();
             }
+
+            // If the data call failure cause is a permanent failure, we mark the APN as permanent
+            // failed.
+            if (isPermanentFail(cause)) {
+                log("cause = " + cause + ", mark apn as permanent failed. apn = " + apn);
+                apnContext.markApnPermanentFailed(apn);
+            }
+
             handleError = true;
         }
 

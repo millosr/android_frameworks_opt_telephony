@@ -280,4 +280,9 @@ public class PhoneSubInfoProxy extends IPhoneSubInfo.Stub {
     protected void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         mPhoneSubInfo.dump(fd, pw, args);
     }
+
+    @Override
+    String getIccSimChallengeResponse(int subId, int appType, int authType, String data); {
+        mPhoneSubInfo.getIccSimChallengeResponse(subId, appType, authType, data);
+    }
 }

@@ -1163,7 +1163,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             mSmsFilterCallback = smsFilterCallback;
             if (!bindToCarrierMessagingService(mContext, carrierPackageName)) {
                 loge("bindService() for carrier messaging service failed");
-                smsFilterCallback.onFilterComplete(true);
+                smsFilterCallback.onFilterComplete(CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
             } else {
                 logv("bindService() for carrier messaging service succeeded");
             }
@@ -1181,7 +1181,8 @@ public abstract class InboundSmsHandler extends StateMachine {
                         mPhone.getSubId(), mSmsFilterCallback);
             } catch (RemoteException e) {
                 loge("Exception filtering the SMS: " + e);
-                mSmsFilterCallback.onFilterComplete(true);
+                mSmsFilterCallback.onFilterComplete(
+                    CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
             }
         }
     }
@@ -1201,11 +1202,11 @@ public abstract class InboundSmsHandler extends StateMachine {
          * This method should be called only once.
          */
         @Override
-        public void onFilterComplete(boolean keepMessage) {
+        public void onFilterComplete(int result) {
             mSmsFilter.disposeConnection(mContext);
 
-            logv("onFilterComplete: keepMessage is "+ keepMessage);
-            if (keepMessage) {
+            logv("onFilterComplete: result is "+ result);
+            if ((result & CarrierMessagingService.RECEIVE_OPTIONS_DROP) == 0) {
                 dispatchSmsDeliveryIntent(mSmsFilter.mPdus, mSmsFilter.mSmsFormat,
                         mSmsFilter.mDestPort, mSmsFilter.mSmsBroadcastReceiver);
             } else {

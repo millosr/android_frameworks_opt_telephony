@@ -28,6 +28,7 @@ import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
@@ -35,6 +36,8 @@ import android.os.PowerManager.WakeLock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 
+import android.provider.Telephony;
+import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.Rlog;
@@ -1503,9 +1506,25 @@ public class ImsPhone extends ImsPhoneBase {
         if (imsReasonInfo.mCode == imsReasonInfo.CODE_REGISTRATION_ERROR
                 && imsReasonInfo.mExtraMessage != null) {
 
+            CarrierConfigManager configManager =
+                    (CarrierConfigManager)mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            if (configManager == null) {
+                Rlog.e(LOG_TAG, "processDisconnectReason: CarrierConfigManager is not ready");
+                return;
+            }
+            PersistableBundle pb = configManager.getConfigForSubId(getSubId());
+            if (pb == null) {
+                Rlog.e(LOG_TAG, "processDisconnectReason: no config for subId " + getSubId());
+                return;
+            }
             final String[] wfcOperatorErrorCodes =
-                    mContext.getResources().getStringArray(
-                            com.android.internal.R.array.wfcOperatorErrorCodes);
+                    pb.getStringArray(
+                            CarrierConfigManager.KEY_WFC_OPERATOR_ERROR_CODES_STRING_ARRAY);
+            if (wfcOperatorErrorCodes == null) {
+                // no operator-specific error codes
+                return;
+            }
+
             final String[] wfcOperatorErrorAlertMessages =
                     mContext.getResources().getStringArray(
                             com.android.internal.R.array.wfcOperatorErrorAlertMessages);

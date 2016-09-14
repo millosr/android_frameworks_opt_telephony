@@ -130,7 +130,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             updatePhoneObject();
             break;
         case EVENT_ALL_DATA_DISCONNECTED:
-            int dds = SubscriptionManager.getDefaultDataSubId();
+            int dds = SubscriptionManager.getDefaultDataSubscriptionId();
             ProxyController.getInstance().unregisterForAllDataDisconnected(dds, this);
             synchronized(this) {
                 if (mPendingRadioPowerOffAfterDataOff) {
@@ -703,7 +703,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     public void powerOffRadioSafely(DcTrackerBase dcTracker) {
         synchronized (this) {
             if (!mPendingRadioPowerOffAfterDataOff) {
-                int dds = SubscriptionManager.getDefaultDataSubId();
+                int dds = SubscriptionManager.getDefaultDataSubscriptionId();
                 // To minimize race conditions we call cleanUpAllConnections on
                 // both if else paths instead of before this isDisconnected test.
                 if (dcTracker.isDisconnected()

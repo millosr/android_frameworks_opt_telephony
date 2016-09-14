@@ -19,6 +19,8 @@ package com.android.internal.telephony.cdma;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.XmlResourceParser;
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.util.Xml;
 
@@ -170,8 +172,31 @@ public final class EriManager {
         }
 
         if (parser == null) {
-            if (DBG) Rlog.d(LOG_TAG, "loadEriFileFromXml: open normal file");
-            parser = r.getXml(com.android.internal.R.xml.eri);
+            String eriFile = null;
+
+            CarrierConfigManager configManager = (CarrierConfigManager)
+                    mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            if (configManager != null) {
+                PersistableBundle b = configManager.getConfigForSubId(mPhone.getSubId());
+                if (b != null) {
+                    eriFile = b.getString(CarrierConfigManager.KEY_CARRIER_ERI_FILE_NAME_STRING);
+                }
+            }
+
+            Rlog.d(LOG_TAG, "eriFile = " + eriFile);
+
+            if (eriFile == null) {
+                if (DBG) Rlog.e(LOG_TAG, "loadEriFileFromXml: Can't find ERI file to load");
+                return;
+            }
+
+            try {
+                parser = Xml.newPullParser();
+                parser.setInput(mContext.getAssets().open(eriFile), null);
+            } catch (IOException | XmlPullParserException e) {
+                if (DBG) Rlog.e(LOG_TAG, "loadEriFileFromXml: no parser for " + eriFile +
+                        ". Exception = " + e.toString());
+            }
         }
 
         try {

@@ -22,7 +22,6 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.telephony.CellInfo;
-import android.telephony.DataConnectionRealTimeInfo;
 import android.telephony.Rlog;
 import android.telephony.VoLteServiceState;
 import android.telephony.ServiceState;
@@ -48,8 +47,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
     protected ITelephonyRegistry mRegistry;
 
-    /*package*/
-    protected DefaultPhoneNotifier() {
+    public DefaultPhoneNotifier() {
         mRegistry = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
                     "telephony.registry"));
     }
@@ -58,13 +56,14 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     public void notifyPhoneState(Phone sender) {
         Call ringingCall = sender.getRingingCall();
         int subId = sender.getSubId();
+        int phoneId = sender.getPhoneId();
         String incomingNumber = "";
-        if (ringingCall != null && ringingCall.getEarliestConnection() != null){
+        if (ringingCall != null && ringingCall.getEarliestConnection() != null) {
             incomingNumber = ringingCall.getEarliestConnection().getAddress();
         }
         try {
             if (mRegistry != null) {
-                  mRegistry.notifyCallStateForSubscriber(subId,
+                  mRegistry.notifyCallStateForPhoneId(phoneId, subId,
                         convertCallState(sender.getState()), incomingNumber);
             }
         } catch (RemoteException ex) {
@@ -95,12 +94,17 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
     @Override
     public void notifySignalStrength(Phone sender) {
+        int phoneId = sender.getPhoneId();
         int subId = sender.getSubId();
-        Rlog.d(LOG_TAG, "notifySignalStrength: mRegistry=" + mRegistry
-                + " ss=" + sender.getSignalStrength() + " sender=" + sender);
+        if (DBG) {
+            // too chatty to log constantly
+            Rlog.d(LOG_TAG, "notifySignalStrength: mRegistry=" + mRegistry
+                    + " ss=" + sender.getSignalStrength() + " sender=" + sender);
+        }
         try {
             if (mRegistry != null) {
-                mRegistry.notifySignalStrengthForSubscriber(subId, sender.getSignalStrength());
+                mRegistry.notifySignalStrengthForPhoneId(phoneId, subId,
+                        sender.getSignalStrength());
             }
         } catch (RemoteException ex) {
             // system process is dead
@@ -157,7 +161,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     private void doNotifyDataConnection(Phone sender, String reason, String apnType,
             PhoneConstants.DataState state) {
         int subId = sender.getSubId();
-        long dds = SubscriptionManager.getDefaultDataSubId();
+        long dds = SubscriptionManager.getDefaultDataSubscriptionId();
         if (DBG) log("subId = " + subId + ", DDS = " + dds);
 
         // TODO
