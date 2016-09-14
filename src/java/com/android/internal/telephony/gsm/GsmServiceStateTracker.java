@@ -477,7 +477,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 break;
 
             case EVENT_ALL_DATA_DISCONNECTED:
-                int dds = SubscriptionManager.getDefaultDataSubId();
+                int dds = SubscriptionManager.getDefaultDataSubscriptionId();
                 ProxyController.getInstance().unregisterForAllDataDisconnected(dds, this);
                 synchronized(this) {
                     if (mPendingRadioPowerOffAfterDataOff) {
@@ -637,10 +637,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 && mPhone.getImsPhone() != null
                 && ((ImsPhone) mPhone.getImsPhone()).isVowifiEnabled()) {
             // In Wi-Fi Calling mode show SPN+WiFi
-            String formatVoice = mPhone.getContext().getText(
-                    com.android.internal.R.string.wfcSpnFormat).toString();
-            String formatData = mPhone.getContext().getText(
-                    com.android.internal.R.string.wfcDataSpnFormat).toString();
+            String formatVoice = "%s";
+            String formatData = "%s";
             String originalSpn = spn.trim();
             spn = String.format(formatVoice, originalSpn);
             dataSpn = String.format(formatData, originalSpn);
@@ -2000,12 +1998,12 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
 
         CharSequence details = "";
-        CharSequence title = context.getText(com.android.internal.R.string.RestrictedChangedTitle);
+        CharSequence title = "Restricted access changed";
         int notificationId = CS_NOTIFICATION;
 
         switch (notifyType) {
         case PS_ENABLED:
-            long dataSubId = SubscriptionManager.getDefaultDataSubId();
+            long dataSubId = SubscriptionManager.getDefaultDataSubscriptionId();
             if (dataSubId != mPhone.getSubId()) {
                 return;
             }
@@ -2146,7 +2144,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     public void powerOffRadioSafely(DcTrackerBase dcTracker) {
         synchronized (this) {
             if (!mPendingRadioPowerOffAfterDataOff) {
-                int dds = SubscriptionManager.getDefaultDataSubId();
+                int dds = SubscriptionManager.getDefaultDataSubscriptionId();
                 // To minimize race conditions we call cleanUpAllConnections on
                 // both if else paths instead of before this isDisconnected test.
                 if (dcTracker.isDisconnected()

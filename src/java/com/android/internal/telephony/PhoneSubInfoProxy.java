@@ -272,17 +272,12 @@ public class PhoneSubInfoProxy extends IPhoneSubInfo.Stub {
      * @param data authentication challenge data
      * @return challenge response
      */
-    public String getIccSimChallengeResponse(int subId, int appType, String data) {
-        return mPhoneSubInfo.getIccSimChallengeResponse(subId, appType, data);
+    public String getIccSimChallengeResponse(int subId, int appType, int authType, String data) {
+        return mPhoneSubInfo.getIccSimChallengeResponse(subId, appType, authType, data);
     }
 
     @Override
     protected void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         mPhoneSubInfo.dump(fd, pw, args);
-    }
-
-    @Override
-    String getIccSimChallengeResponse(int subId, int appType, int authType, String data); {
-        mPhoneSubInfo.getIccSimChallengeResponse(subId, appType, authType, data);
     }
 }

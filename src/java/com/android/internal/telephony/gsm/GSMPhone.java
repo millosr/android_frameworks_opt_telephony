@@ -812,8 +812,8 @@ public class GSMPhone extends PhoneBase {
 
         boolean useImsForEmergency = imsPhone != null
                 && isEmergency
-                && mContext.getResources().getBoolean(
-                        com.android.internal.R.bool.useImsAlwaysForEmergencyCall)
+//                && mContext.getResources().getBoolean(
+//                        com.android.internal.R.bool.useImsAlwaysForEmergencyCall)
                 && ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext)
                 && (imsPhone.getServiceState().getState() != ServiceState.STATE_POWER_OFF);
 
@@ -1718,7 +1718,7 @@ public class GSMPhone extends PhoneBase {
      * @return true for success; false otherwise.
      */
     public boolean updateCurrentCarrierInProvider() {
-        long currentDds = SubscriptionManager.getDefaultDataSubId();
+        long currentDds = SubscriptionManager.getDefaultDataSubscriptionId();
         String operatorNumeric = getOperatorNumeric();
 
         log("updateCurrentCarrierInProvider: mSubId = " + getSubId()

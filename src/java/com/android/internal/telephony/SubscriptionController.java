@@ -798,7 +798,7 @@ public class SubscriptionController extends ISub.Stub {
                 return -1;
             }
             if (setDisplayName) {
-                String simCarrierName = mTelephonyManager.getSimOperatorNameForSubscription(subIds[0]);
+                String simCarrierName = mTelephonyManager.getSimOperatorName(subIds[0]);
                 String nameToSet;
 
                 if (!TextUtils.isEmpty(simCarrierName)) {

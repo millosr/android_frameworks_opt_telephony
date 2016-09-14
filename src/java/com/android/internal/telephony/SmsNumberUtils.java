@@ -31,13 +31,14 @@ import android.database.SQLException;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.TelephonyManager;
 import android.telephony.Rlog;
+
 import com.android.internal.telephony.HbpcdLookup.MccIdd;
 import com.android.internal.telephony.HbpcdLookup.MccLookup;
 
 
  /**
  * This class implements handle the MO SMS target address before sending.
- * This is special for VZW requirement. Follow the specificaitons of assisted dialing
+ * This is special for VZW requirement. Follow the specifications of assisted dialing
  * of MO SMS while traveling on VZW CDMA, international CDMA or GSM markets.
  * {@hide}
  */
@@ -113,13 +114,13 @@ public class SmsNumberUtils {
     }
 
     /* Breaks the given number down and formats it according to the rules
-     * for different number plans and differnt network.
+     * for different number plans and different network.
      *
-     * @param number destionation number which need to be format
+     * @param number destination number which need to be format
      * @param activeMcc current network's mcc
      * @param networkType current network type
      *
-     * @return the number after fromatting.
+     * @return the number after formatting.
      */
     private static String formatNumber(Context context, String number,
                                String activeMcc,
@@ -435,7 +436,7 @@ public class SmsNumberUtils {
 
             int[] ccArray = new int[MAX_COUNTRY_CODES_LENGTH];
             for (int i = 0; i < MAX_COUNTRY_CODES_LENGTH; i ++) {
-                ccArray[i] = Integer.valueOf(number.substring(0, i+1));
+                ccArray[i] = Integer.parseInt(number.substring(0, i+1));
             }
 
             for (int i = 0; i < allCCs.length; i ++) {
@@ -530,7 +531,8 @@ public class SmsNumberUtils {
     /**
      *  Filter the destination number if using VZW sim card.
      */
-    public static String filterDestAddr(PhoneBase phoneBase, String destAddr) {
+    public static String filterDestAddr(Phone phone, String destAddr) {
+	PhoneBase phoneBase = (PhoneBase)phone;
         if (DBG) Rlog.d(TAG, "enter filterDestAddr. destAddr=\"" + destAddr + "\"" );
 
         if (destAddr == null || !PhoneNumberUtils.isGlobalPhoneNumber(destAddr)) {

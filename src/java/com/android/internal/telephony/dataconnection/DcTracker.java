@@ -26,6 +26,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.database.Cursor;
@@ -41,6 +42,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.os.SystemClock;
@@ -48,6 +50,7 @@ import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
+import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
@@ -90,6 +93,9 @@ import com.android.internal.telephony.ServiceStateTracker;
  */
 public final class DcTracker extends DcTrackerBase {
     protected final String LOG_TAG = "DCT";
+
+    private static final String ERROR_CODE_KEY = "errorCode";
+    private static final String APN_TYPE_KEY = "apnType";
 
     /**
      * List of messages that are waiting to be posted, when data call disconnect
@@ -1970,7 +1976,7 @@ public final class DcTracker extends DcTrackerBase {
             // failed.
             if (isPermanentFail(cause)) {
                 log("cause = " + cause + ", mark apn as permanent failed. apn = " + apn);
-                apnContext.markApnPermanentFailed(apn);
+                //apnContext.markApnPermanentFailed(apn);
             }
 
             handleError = true;
@@ -2066,6 +2072,31 @@ public final class DcTracker extends DcTrackerBase {
             // we're not tying up the RIL command channel
             startAlarmForReconnect(getApnDelay(), apnContext);
         }
+    }
+
+    /**
+     * Read Carrier App name from CarrierConfig
+     * @return String[0] Package name, String[1] Activity name
+     */
+    private String[] getActivationAppName() {
+        CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle b = null;
+        String[] activationApp;
+
+       if (configManager != null) {
+            b = configManager.getConfig();
+        }
+        if (b != null) {
+            activationApp = b.getStringArray(CarrierConfigManager
+                    .KEY_SIM_PROVISIONING_STATUS_DETECTION_CARRIER_APP_STRING_ARRAY);
+        } else {
+            // Return static default defined in CarrierConfigManager.
+            activationApp = CarrierConfigManager.getDefaultConfig().getStringArray
+                    (CarrierConfigManager
+                            .KEY_SIM_PROVISIONING_STATUS_DETECTION_CARRIER_APP_STRING_ARRAY);
+        }
+        return activationApp;
     }
 
     /**
@@ -2812,6 +2843,51 @@ public final class DcTracker extends DcTrackerBase {
         Message msg = obtainMessage(DctConstants.EVENT_CLEAN_UP_ALL_CONNECTIONS);
         msg.obj = cause;
         sendMessage(msg);
+    }
+
+    private boolean checkCarrierAppAvailable(Intent intent) {
+        // Read from carrier config manager
+        String[] activationApp = getActivationAppName();
+        if(activationApp == null || activationApp.length != 2) {
+            return false;
+        }
+
+        intent.setClassName(activationApp[0], activationApp[1]);
+        // Check if activation app is available
+        final PackageManager packageManager = mPhone.getContext().getPackageManager();
+        if (packageManager.queryBroadcastReceivers(intent,
+                PackageManager.MATCH_DEFAULT_ONLY).isEmpty()) {
+            loge("Activation Carrier app is configured, but not available: "
+                    + activationApp[0] + "." + activationApp[1]);
+            return false;
+        }
+        return true;
+    }
+
+    private boolean notifyCarrierAppWithIntent(Intent intent) {
+        // RIL has limitation to process new request while there is pending deactivation requests
+        // Make sure there is no pending disconnect before launching carrier app
+        if (mDisconnectPendingCount != 0) {
+            loge("Wait for pending disconnect requests done");
+            return false;
+        }
+        if (!checkCarrierAppAvailable(intent)) {
+            loge("Carrier app is unavailable");
+            return false;
+        }
+
+        intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, mPhone.getSubId());
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+
+        try {
+            mPhone.getContext().sendBroadcast(intent);
+        } catch (ActivityNotFoundException e) {
+            loge("sendBroadcast failed: " + e);
+            return false;
+        }
+
+        if (DBG) log("send Intent to Carrier app with action: " + intent.getAction());
+        return true;
     }
 
     protected void notifyDataDisconnectComplete() {

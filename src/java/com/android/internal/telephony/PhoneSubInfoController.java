@@ -314,10 +314,10 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         return phoneSubInfoProxy.getIsimChallengeResponse(nonce);
     }
 
-    public String getIccSimChallengeResponse(int subId, int appType, String data)
+    public String getIccSimChallengeResponse(int subId, int appType, int authType, String data)
             throws RemoteException {
         PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(subId);
-        return phoneSubInfoProxy.getIccSimChallengeResponse(subId, appType, data);
+        return phoneSubInfoProxy.getIccSimChallengeResponse(subId, appType, authType, data);
     }
 
      public String getGroupIdLevel1(String callingPackage) {

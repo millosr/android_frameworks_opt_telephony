@@ -24,7 +24,7 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.util.Xml;
 
-import com.android.internal.telephony.PhoneBase;
+import com.android.internal.telephony.Phone;
 import com.android.internal.util.XmlUtils;
 
 
@@ -40,7 +40,7 @@ import java.util.HashMap;
  * EriManager loads the ERI file definitions and manages the CDMA roaming information.
  *
  */
-public final class EriManager {
+public class EriManager {
 
     class EriFile {
 
@@ -85,11 +85,11 @@ public final class EriManager {
         }
     }
 
-    private static final String LOG_TAG = "CDMA";
+    private static final String LOG_TAG = "EriManager";
     private static final boolean DBG = true;
     private static final boolean VDBG = false;
 
-    static final int ERI_FROM_XML          = 0;
+    public static final int ERI_FROM_XML   = 0;
     static final int ERI_FROM_FILE_SYSTEM  = 1;
     static final int ERI_FROM_MODEM        = 2;
 
@@ -97,8 +97,10 @@ public final class EriManager {
     private int mEriFileSource = ERI_FROM_XML;
     private boolean mIsEriFileLoaded;
     private EriFile mEriFile;
+    private final Phone mPhone;
 
-    public EriManager(PhoneBase phone, Context context, int eriFileSource) {
+    public EriManager(Phone phone, Context context, int eriFileSource) {
+        mPhone = phone;
         mContext = context;
         mEriFileSource = eriFileSource;
         mEriFile = new EriFile();
@@ -241,7 +243,9 @@ public final class EriManager {
                 }
             }
 
-            if (DBG) Rlog.d(LOG_TAG, "loadEriFileFromXml: eri parsing successful, file loaded");
+            Rlog.d(LOG_TAG, "loadEriFileFromXml: eri parsing successful, file loaded. ver = " +
+                    mEriFile.mVersionNumber + ", # of entries = " + mEriFile.mNumberOfEriEntries);
+
             mIsEriFileLoaded = true;
 
         } catch (Exception e) {
@@ -307,7 +311,7 @@ public final class EriManager {
     private EriDisplayInformation getEriDisplayInformation(int roamInd, int defRoamInd){
         EriDisplayInformation ret;
 
-        // Carrier can use eri.xml to customize any built-in roaming display indications
+        // Carrier can use carrier config to customize any built-in roaming display indications
         if (mIsEriFileLoaded) {
             EriInfo eriInfo = getEriInfo(roamInd);
             if (eriInfo != null) {

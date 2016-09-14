@@ -236,16 +236,6 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyDataConnectionRealTimeInfo(Phone sender,
-                                                 DataConnectionRealTimeInfo dcRtInfo) {
-        try {
-            mRegistry.notifyDataConnectionRealTimeInfo(dcRtInfo);
-        } catch (RemoteException ex) {
-
-        }
-    }
-
-    @Override
     public void notifyOtaspChanged(Phone sender, int otaspMode) {
         // FIXME: subId?
         try {
