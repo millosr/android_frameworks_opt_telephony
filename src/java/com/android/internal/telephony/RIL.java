@@ -3647,10 +3647,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     private Object
     responseFailCause(Parcel p) {
-        //SonyRIL
-        int response[] = (int[])responseInts(p);
         LastCallFailCause failCause = new LastCallFailCause();
-        failCause.causeCode = response[0];
+        failCause.causeCode = p.readInt();
         if (p.dataAvail() > 0) {
           failCause.vendorCause = p.readString();
         }
